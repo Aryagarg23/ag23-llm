@@ -61,6 +61,29 @@ def _cmd_chat(args) -> int:
     return 0
 
 
+def _cmd_stats(args) -> int:
+    import json
+    import os
+    from . import telemetry
+    path = args.file or os.environ.get("AG23_LLM_TELEMETRY_FILE") or "ag23.jsonl"
+    if not os.path.exists(path):
+        print(f"no telemetry file at {path}\n"
+              "enable it: configure(telemetry=True, telemetry_file=...) or AG23_LLM_TELEMETRY_FILE",
+              file=sys.stderr)
+        return 1
+    events = []
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                try:
+                    events.append(json.loads(line))
+                except ValueError:
+                    pass
+    print(json.dumps(telemetry.aggregate(events), indent=2))
+    return 0
+
+
 def _cmd_config(_args) -> int:
     from . import config_gen
     try:
@@ -114,6 +137,10 @@ def main(argv=None) -> None:
     p_chat.set_defaults(fn=_cmd_chat)
 
     sub.add_parser("config", help="print the generated LiteLLM config.yaml").set_defaults(fn=_cmd_config)
+
+    p_stats = sub.add_parser("stats", help="aggregate a telemetry JSONL file (calls, errors, avg latency)")
+    p_stats.add_argument("--file", help="path to the telemetry JSONL (default: $AG23_LLM_TELEMETRY_FILE or ag23.jsonl)")
+    p_stats.set_defaults(fn=_cmd_stats)
 
     args = ap.parse_args(argv)
     if not hasattr(args, "fn"):

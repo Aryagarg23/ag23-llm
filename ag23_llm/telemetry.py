@@ -100,3 +100,28 @@ def reset() -> None:
     global _agg
     with _lock:
         _agg = _Agg()
+
+
+def aggregate(events: list[dict]) -> dict:
+    """Same summary shape as stats(), computed over raw JSONL events (for `ag23-llm stats`)."""
+    calls = len(events)
+    errors = sum(1 for e in events if not e.get("ok", True))
+    total = sum(e.get("latency_ms", 0) or 0 for e in events)
+    by: dict = {}
+    for e in events:
+        d = by.setdefault(e.get("provider", "?"), {"calls": 0, "errors": 0, "latency_ms": 0.0})
+        d["calls"] += 1
+        d["latency_ms"] += e.get("latency_ms", 0) or 0
+        if not e.get("ok", True):
+            d["errors"] += 1
+    return {
+        "calls": calls,
+        "errors": errors,
+        "error_rate": round(errors / calls, 3) if calls else 0.0,
+        "avg_latency_ms": round(total / calls, 1) if calls else 0.0,
+        "by_provider": {
+            name: {"calls": v["calls"], "errors": v["errors"],
+                   "avg_latency_ms": round(v["latency_ms"] / v["calls"], 1) if v["calls"] else 0.0}
+            for name, v in by.items()
+        },
+    }
