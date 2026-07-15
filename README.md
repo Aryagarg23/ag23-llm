@@ -71,6 +71,39 @@ cluster. Today the gateway routes by tag + LiteLLM's rate-limit-aware strategy;
 `ag23_llm/taskrouter.py:build_strategy()` is the LiteLLM `CustomRoutingStrategyBase` hook
 to route by strict benchmark order once you trust measured evals.
 
+## Configuration
+
+All optional — set via `configure(...)` or env vars. Nothing here imports a heavy library;
+optional features load their deps lazily, only when actually used.
+
+```python
+import ag23_llm
+ag23_llm.configure(
+    task_routing=False,    # ignore task hints; just load-balance across providers
+    semantic_router=False, # keyword task classification only (never imports semantic-router)
+    telemetry=True,        # record per-call metrics (below)
+    telemetry_file="ag23.jsonl",  # optional: also append events as JSONL
+)
+```
+
+Env equivalents: `AG23_LLM_TASK_ROUTING`, `AG23_LLM_SEMANTIC_ROUTER`, `AG23_LLM_TELEMETRY`,
+`AG23_LLM_TELEMETRY_FILE`.
+
+**Load-balancer vs task routing.** By default a `task=` hint routes to models good at that
+task. With `task_routing=False` (or no `task`), the gateway just load-balances across all
+configured providers via LiteLLM's rate-limit-aware strategy — no classification, no
+embeddings, so `semantic-router`/`fastembed` are never imported (and needn't be installed).
+
+**Telemetry (opt-in, stdlib only).** Off by default and free when off. When on, each call
+records provider, model, task/cluster, latency, success/error type, and token count —
+**never prompts or completions**. Errors log via the `ag23_llm` logger.
+
+```python
+ag23_llm.stats()
+# {'calls': 12, 'errors': 1, 'error_rate': 0.083, 'avg_latency_ms': 540.2,
+#  'by_provider': {'groq': {'calls': 9, 'errors': 0, 'avg_latency_ms': 410.1}}}
+```
+
 ## Run the scout
 
 ```bash

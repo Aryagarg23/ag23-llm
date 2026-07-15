@@ -63,11 +63,12 @@ def canonical_cluster(task: str) -> Optional[str]:
     return None
 
 
-def tags_for_task(task: str) -> list[str]:
+def tags_for_task(task: str, *, semantic: bool = True) -> list[str]:
     """Tags the gateway should filter the `free` group by for this task.
 
-    A named cluster maps straight to its tag; free-text is classified first."""
-    cluster = canonical_cluster(task) or classify(task)
+    A named cluster maps straight to its tag; free-text is classified first.
+    semantic=False keeps it to keyword classification (never imports semantic-router)."""
+    cluster = canonical_cluster(task) or classify(task, semantic=semantic)
     return [cluster] if cluster else []
 
 
@@ -99,16 +100,19 @@ def _keyword_classify(query: str) -> Optional[str]:
     return None
 
 
-def classify(query: str) -> Optional[str]:
-    """Classify free text into a cluster. Semantic Router if present, else keywords."""
-    router = _semantic_router()
-    if router is not None:
-        try:
-            choice = router(query)
-            if choice and getattr(choice, "name", None):
-                return choice.name
-        except Exception:
-            pass
+def classify(query: str, *, semantic: bool = True) -> Optional[str]:
+    """Classify free text into a cluster. semantic=True uses Semantic Router when
+    installed (importing it lazily), then keywords; semantic=False is keyword-only and
+    never imports semantic-router/fastembed."""
+    if semantic:
+        router = _semantic_router()
+        if router is not None:
+            try:
+                choice = router(query)
+                if choice and getattr(choice, "name", None):
+                    return choice.name
+            except Exception:
+                pass
     return _keyword_classify(query)
 
 

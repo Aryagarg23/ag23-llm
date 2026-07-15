@@ -12,9 +12,11 @@ owns the *public surface* (ChatMessage/ChatResult) and the routing decision:
 from __future__ import annotations
 
 from functools import lru_cache
+from time import perf_counter
 from typing import Optional, Union
 
-from . import config_gen, registry
+from . import config_gen, registry, telemetry   # telemetry is stdlib-only + no-op when off
+from .config import get_config
 from .config_gen import GROUP
 from .types import (AllProvidersFailed, ChatMessage, ChatResult, LLMError,
                     Usage)
@@ -98,6 +100,7 @@ def chat(
 
     task:     capability hint ("coding", "reasoning", …). Resolved to tags by the
               task-router; LiteLLM then routes within the `free` group by those tags.
+              Ignored when config.task_routing is False (plain load-balancing then).
     provider: force a specific provider id from the registry (skips group routing).
     model:    force a raw model id (used with `provider`, or as a full LiteLLM string).
     tags:     pass tags directly, bypassing the task-router.
@@ -107,8 +110,12 @@ def chat(
     if max_tokens:
         common["max_tokens"] = max_tokens
 
-    # ── forced provider/model: call that one deployment directly ────────────
+    cluster: Optional[str] = None          # recorded in telemetry
+    requested_provider = provider
+
+    # ── decide how to execute (build the call thunk) ────────────────────────
     if provider or (model and "/" not in (model or "")):
+        # forced single provider/model
         import litellm
         prov = registry.get_provider(provider) if provider else None
         if provider and not prov:
@@ -117,33 +124,48 @@ def chat(
         if not target_model:
             raise LLMError(f"provider '{provider}' has no default_model; pass model=")
         params = config_gen.litellm_model_params(prov, target_model, use_env_ref=False)
-        try:
-            resp = litellm.completion(**{**params, **common})
-        except Exception as e:  # noqa: BLE001 — surface provider error to caller
-            raise AllProvidersFailed([(provider or "forced", str(e))]) from e
-        return _result_from_response(resp, requested_provider=provider)
+        label = provider or "forced"
 
-    # ── forced full LiteLLM model string (e.g. "groq/llama-3.1-8b-instant") ──
-    if model:
+        def _call():
+            return litellm.completion(**{**params, **common})
+
+    elif model:
+        # forced full LiteLLM model string (e.g. "groq/llama-3.1-8b-instant")
         import litellm
-        try:
-            resp = litellm.completion(model=model, **common)
-        except Exception as e:  # noqa: BLE001
-            raise AllProvidersFailed([(model, str(e))]) from e
-        return _result_from_response(resp, requested_provider=None)
+        label = model
 
-    # ── task/tag routing across the `free` group ────────────────────────────
-    resolved_tags = tags
-    if resolved_tags is None and task:
-        from . import taskrouter
-        resolved_tags = taskrouter.tags_for_task(task)
+        def _call():
+            return litellm.completion(model=model, **common)
 
-    router = get_router()
-    call = {"model": GROUP, **common}
-    if resolved_tags:
-        call["metadata"] = {"tags": resolved_tags}
+    else:
+        # route across the `free` group. task_routing=False → no tags → load-balance.
+        cfg = get_config()
+        resolved_tags = tags
+        if resolved_tags is None and task and cfg.task_routing:
+            from . import taskrouter
+            resolved_tags = taskrouter.tags_for_task(task, semantic=cfg.semantic_router) or None
+        cluster = resolved_tags[0] if resolved_tags else None
+        router = get_router()
+        call = {"model": GROUP, **common}
+        if resolved_tags:
+            call["metadata"] = {"tags": resolved_tags}
+        label = GROUP
+
+        def _call():
+            return router.completion(**call)
+
+    # ── execute once: timed, with opt-in telemetry (no-op when disabled) ─────
+    started = perf_counter()
     try:
-        resp = router.completion(**call)
-    except Exception as e:  # noqa: BLE001 — LiteLLM exhausted the group
-        raise AllProvidersFailed([(GROUP, str(e))]) from e
-    return _result_from_response(resp, requested_provider=None)
+        resp = _call()
+    except Exception as e:  # noqa: BLE001 — surface as AllProvidersFailed
+        telemetry.record(provider=requested_provider or label, model=model or label,
+                         task=task, cluster=cluster, ok=False, error=type(e).__name__,
+                         latency_ms=(perf_counter() - started) * 1000)
+        raise AllProvidersFailed([(label, str(e))]) from e
+
+    result = _result_from_response(resp, requested_provider=requested_provider)
+    telemetry.record(provider=result.provider, model=result.model, task=task,
+                     cluster=cluster, ok=True, total_tokens=result.usage.total_tokens,
+                     latency_ms=(perf_counter() - started) * 1000)
+    return result

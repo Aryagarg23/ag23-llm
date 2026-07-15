@@ -46,7 +46,9 @@ def _cmd_route(args) -> int:
 
 def _cmd_chat(args) -> int:
     from .types import LLMError
-    from . import gateway
+    from . import config, gateway
+    if args.no_task_routing:
+        config.configure(task_routing=False)   # ignore task hints; plain load-balance
     try:
         res = gateway.chat(args.prompt, task=args.task, provider=args.provider,
                            model=args.model, temperature=args.temperature,
@@ -107,6 +109,8 @@ def main(argv=None) -> None:
     p_chat.add_argument("--model", help="force a model id (with --provider) or full LiteLLM string")
     p_chat.add_argument("--temperature", type=float, default=0.7)
     p_chat.add_argument("--max-tokens", type=int, default=None, dest="max_tokens")
+    p_chat.add_argument("--no-task-routing", action="store_true",
+                        help="ignore --task and just load-balance across providers")
     p_chat.set_defaults(fn=_cmd_chat)
 
     sub.add_parser("config", help="print the generated LiteLLM config.yaml").set_defaults(fn=_cmd_config)
