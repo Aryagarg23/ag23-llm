@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "updated": "2026-07-15",
+  "source": "SEED ONLY: derived from providers.json `strengths` tags + a coarse LiveBench/Artificial-Analysis read. NOT measured here.",
+  "how_to_replace": "Run your own evals (promptfoo / lm-evaluation-harness / DeepEval) across the configured free models, then overwrite each cluster's list with the measured best->worst order. Model ids are `<provider>:<model>` (match model_info.id in the generated LiteLLM config). See PROVIDERS.md > 'Benchmark clusters'.",
+  "clusters": {
+    "coding": [
+      "openrouter:qwen/qwen3-coder:free",
+      "mistral-codestral:codestral-latest",
+      "cerebras:gpt-oss-120b",
+      "groq:openai/gpt-oss-120b",
+      "github-models:openai/gpt-4.1"
+    ],
+    "reasoning": [
+      "cerebras:gpt-oss-120b",
+      "groq:llama-3.3-70b-versatile",
+      "google-ai-studio:gemini-2.5-flash",
+      "sambanova:Meta-Llama-3.3-70B-Instruct",
+      "cohere:command-a-03-2025"
+    ],
+    "math": [
+      "cerebras:gpt-oss-120b",
+      "groq:openai/gpt-oss-120b",
+      "google-ai-studio:gemini-2.5-flash"
+    ],
+    "long-context": [
+      "google-ai-studio:gemini-2.5-flash",
+      "github-models:openai/gpt-4.1",
+      "groq:llama-3.3-70b-versatile"
+    ],
+    "rag": [
+      "cohere:command-r-08-2024",
+      "cohere:command-a-03-2025",
+      "google-ai-studio:gemini-2.5-flash"
+    ],
+    "vision": [
+      "google-ai-studio:gemini-2.5-flash"
+    ],
+    "fast-cheap": [
+      "groq:llama-3.1-8b-instant",
+      "cerebras:llama-3.1-8b",
+      "google-ai-studio:gemini-2.5-flash-lite",
+      "cloudflare:@cf/meta/llama-3.1-8b-instruct"
+    ],
+    "general": [
+      "groq:llama-3.3-70b-versatile",
+      "google-ai-studio:gemini-2.5-flash",
+      "sambanova:Meta-Llama-3.3-70B-Instruct",
+      "groq:llama-3.1-8b-instant"
+    ]
+  }
+}

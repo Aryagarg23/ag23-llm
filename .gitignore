@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Envs
+.venv/
+venv/
+.env
+
+# Secrets / keys
+*.pem
+
+# Scout-mutable / generated
+*.bak
+*.tmp
+PROVIDERS.md
+.agent-trace/

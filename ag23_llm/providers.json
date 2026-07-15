@@ -1,0 +1,274 @@
+{
+  "version": 1,
+  "updated": "2026-07-15",
+  "note": "Data-driven provider registry. The scout (scout.py) may auto-APPEND verified OpenAI-compatible providers here and FLAG (never delete) ones that stop responding. Hand-edits are fine too. wire_format: openai = OpenAI-compatible REST (served by the openai SDK with base_url), gemini = Google GenAI SDK, cohere = Cohere SDK. base_url supports ${ENV_VAR} substitution. A provider is 'available' only when every auth.env var is present (local-vllm is available when reachable).",
+  "providers": [
+    {
+      "id": "groq",
+      "name": "Groq",
+      "wire_format": "openai",
+      "base_url": "https://api.groq.com/openai/v1",
+      "auth": { "scheme": "bearer", "env": ["GROQ_API_KEY"] },
+      "models_path": "/models",
+      "default_model": "llama-3.1-8b-instant",
+      "models": [
+        { "id": "llama-3.3-70b-versatile", "strengths": ["reasoning", "general", "long-context"] },
+        { "id": "llama-3.1-8b-instant", "strengths": ["fast-cheap", "general"] },
+        { "id": "openai/gpt-oss-120b", "strengths": ["reasoning", "coding"] }
+      ],
+      "rate_limits": { "rpm": 30, "rpd": 14400 },
+      "priority": 90,
+      "docs": "https://console.groq.com/docs",
+      "source": "cheahjs/free-llm-api-resources",
+      "status": "active"
+    },
+    {
+      "id": "cerebras",
+      "name": "Cerebras",
+      "wire_format": "openai",
+      "base_url": "https://api.cerebras.ai/v1",
+      "auth": { "scheme": "bearer", "env": ["CEREBRAS_API_KEY"] },
+      "models_path": "/models",
+      "default_model": "llama-3.1-8b",
+      "models": [
+        { "id": "gpt-oss-120b", "strengths": ["reasoning", "coding"] },
+        { "id": "llama-3.1-8b", "strengths": ["fast-cheap", "general"] }
+      ],
+      "rate_limits": { "rpm": 30, "rpd": 14400 },
+      "priority": 85,
+      "docs": "https://inference-docs.cerebras.ai",
+      "source": "cheahjs/free-llm-api-resources",
+      "status": "active"
+    },
+    {
+      "id": "google-ai-studio",
+      "name": "Google AI Studio (Gemini)",
+      "wire_format": "gemini",
+      "base_url": "https://generativelanguage.googleapis.com",
+      "auth": { "scheme": "sdk", "env": ["GEMINI_API_KEY"] },
+      "models_path": "/v1beta/models",
+      "default_model": "gemini-2.5-flash",
+      "models": [
+        { "id": "gemini-2.5-flash", "strengths": ["reasoning", "general", "long-context", "vision"] },
+        { "id": "gemini-2.5-flash-lite", "strengths": ["fast-cheap", "general"] },
+        { "id": "gemma-3-27b-it", "strengths": ["general", "fast-cheap"] }
+      ],
+      "rate_limits": { "rpm": 5, "rpd": 20 },
+      "priority": 80,
+      "docs": "https://ai.google.dev/gemini-api/docs",
+      "source": "cheahjs/free-llm-api-resources",
+      "status": "active"
+    },
+    {
+      "id": "openrouter",
+      "name": "OpenRouter (free models)",
+      "wire_format": "openai",
+      "base_url": "https://openrouter.ai/api/v1",
+      "auth": { "scheme": "bearer", "env": ["OPENROUTER_API_KEY"] },
+      "models_path": "/models",
+      "default_model": "meta-llama/llama-3.3-70b-instruct:free",
+      "models": [
+        { "id": "meta-llama/llama-3.3-70b-instruct:free", "strengths": ["reasoning", "general"] },
+        { "id": "qwen/qwen3-coder:free", "strengths": ["coding"] },
+        { "id": "openai/gpt-oss-20b:free", "strengths": ["fast-cheap", "general"] }
+      ],
+      "rate_limits": { "rpm": 20, "rpd": 50 },
+      "priority": 60,
+      "docs": "https://openrouter.ai/docs",
+      "source": "cheahjs/free-llm-api-resources",
+      "status": "active"
+    },
+    {
+      "id": "mistral",
+      "name": "Mistral (La Plateforme)",
+      "wire_format": "openai",
+      "base_url": "https://api.mistral.ai/v1",
+      "auth": { "scheme": "bearer", "env": ["MISTRAL_API_KEY"] },
+      "models_path": "/models",
+      "default_model": "mistral-small-latest",
+      "models": [
+        { "id": "mistral-small-latest", "strengths": ["general", "fast-cheap"] },
+        { "id": "codestral-latest", "strengths": ["coding"] }
+      ],
+      "rate_limits": { "rpm": 60, "rpd": 500000 },
+      "priority": 65,
+      "docs": "https://docs.mistral.ai",
+      "source": "cheahjs/free-llm-api-resources",
+      "status": "active"
+    },
+    {
+      "id": "mistral-codestral",
+      "name": "Mistral (Codestral)",
+      "wire_format": "openai",
+      "base_url": "https://codestral.mistral.ai/v1",
+      "auth": { "scheme": "bearer", "env": ["CODESTRAL_API_KEY"] },
+      "models_path": "/models",
+      "default_model": "codestral-latest",
+      "models": [
+        { "id": "codestral-latest", "strengths": ["coding", "fim"] }
+      ],
+      "rate_limits": { "rpm": 30, "rpd": 2000 },
+      "priority": 55,
+      "docs": "https://docs.mistral.ai/capabilities/code_generation",
+      "source": "cheahjs/free-llm-api-resources",
+      "status": "active"
+    },
+    {
+      "id": "nvidia-nim",
+      "name": "NVIDIA NIM",
+      "wire_format": "openai",
+      "base_url": "https://integrate.api.nvidia.com/v1",
+      "auth": { "scheme": "bearer", "env": ["NVIDIA_API_KEY"] },
+      "models_path": "/models",
+      "default_model": "meta/llama-3.1-8b-instruct",
+      "models": [
+        { "id": "meta/llama-3.1-70b-instruct", "strengths": ["reasoning", "general"] },
+        { "id": "meta/llama-3.1-8b-instruct", "strengths": ["fast-cheap", "general"] }
+      ],
+      "rate_limits": { "rpm": 40, "rpd": null },
+      "priority": 50,
+      "docs": "https://docs.api.nvidia.com",
+      "source": "cheahjs/free-llm-api-resources",
+      "status": "active"
+    },
+    {
+      "id": "huggingface",
+      "name": "HuggingFace Inference Providers",
+      "wire_format": "openai",
+      "base_url": "https://router.huggingface.co/v1",
+      "auth": { "scheme": "bearer", "env": ["HF_TOKEN"] },
+      "models_path": "/models",
+      "default_model": "meta-llama/Llama-3.1-8B-Instruct",
+      "models": [
+        { "id": "meta-llama/Llama-3.1-8B-Instruct", "strengths": ["general", "fast-cheap"] }
+      ],
+      "rate_limits": { "rpm": null, "rpd": null },
+      "priority": 40,
+      "docs": "https://huggingface.co/docs/inference-providers",
+      "source": "cheahjs/free-llm-api-resources",
+      "status": "active"
+    },
+    {
+      "id": "github-models",
+      "name": "GitHub Models",
+      "wire_format": "openai",
+      "base_url": "https://models.github.ai/inference",
+      "auth": { "scheme": "bearer", "env": ["GITHUB_MODELS_TOKEN"] },
+      "models_path": "/catalog/models",
+      "default_model": "openai/gpt-4o-mini",
+      "models": [
+        { "id": "openai/gpt-4o-mini", "strengths": ["general", "fast-cheap"] },
+        { "id": "openai/gpt-4.1", "strengths": ["reasoning", "coding", "long-context"] }
+      ],
+      "rate_limits": { "rpm": null, "rpd": null },
+      "priority": 45,
+      "docs": "https://docs.github.com/en/github-models",
+      "source": "cheahjs/free-llm-api-resources",
+      "status": "active"
+    },
+    {
+      "id": "cohere",
+      "name": "Cohere",
+      "wire_format": "cohere",
+      "base_url": "https://api.cohere.com",
+      "auth": { "scheme": "sdk", "env": ["COHERE_API_KEY"] },
+      "models_path": "/v1/models",
+      "default_model": "command-r-08-2024",
+      "models": [
+        { "id": "command-a-03-2025", "strengths": ["reasoning", "general"] },
+        { "id": "command-r-08-2024", "strengths": ["general", "rag"] },
+        { "id": "command-r7b-12-2024", "strengths": ["fast-cheap", "general"] }
+      ],
+      "rate_limits": { "rpm": 20, "rpd": null, "rpmonth": 1000 },
+      "priority": 35,
+      "docs": "https://docs.cohere.com",
+      "source": "cheahjs/free-llm-api-resources",
+      "status": "active"
+    },
+    {
+      "id": "cloudflare",
+      "name": "Cloudflare Workers AI",
+      "wire_format": "openai",
+      "base_url": "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/ai/v1",
+      "auth": { "scheme": "bearer", "env": ["CLOUDFLARE_API_KEY", "CLOUDFLARE_ACCOUNT_ID"] },
+      "models_path": null,
+      "default_model": "@cf/meta/llama-3.1-8b-instruct",
+      "models": [
+        { "id": "@cf/meta/llama-3.1-8b-instruct", "strengths": ["fast-cheap", "general"] }
+      ],
+      "rate_limits": { "rpm": null, "rpd": null, "note": "10000 neurons/day" },
+      "priority": 30,
+      "docs": "https://developers.cloudflare.com/workers-ai",
+      "source": "cheahjs/free-llm-api-resources",
+      "status": "active"
+    },
+    {
+      "id": "sambanova",
+      "name": "SambaNova Cloud",
+      "wire_format": "openai",
+      "base_url": "https://api.sambanova.ai/v1",
+      "auth": { "scheme": "bearer", "env": ["SAMBANOVA_API_KEY"] },
+      "models_path": "/models",
+      "default_model": "Meta-Llama-3.1-8B-Instruct",
+      "models": [
+        { "id": "Meta-Llama-3.3-70B-Instruct", "strengths": ["reasoning", "general"] },
+        { "id": "Meta-Llama-3.1-8B-Instruct", "strengths": ["fast-cheap", "general"] }
+      ],
+      "rate_limits": { "rpm": null, "rpd": null },
+      "priority": 48,
+      "docs": "https://docs.sambanova.ai",
+      "source": "cheahjs/free-llm-api-resources",
+      "status": "active"
+    },
+    {
+      "id": "scaleway",
+      "name": "Scaleway Generative APIs",
+      "wire_format": "openai",
+      "base_url": "https://api.scaleway.ai/v1",
+      "auth": { "scheme": "bearer", "env": ["SCALEWAY_API_KEY"] },
+      "models_path": "/models",
+      "default_model": "llama-3.1-8b-instruct",
+      "models": [
+        { "id": "llama-3.1-8b-instruct", "strengths": ["fast-cheap", "general"] }
+      ],
+      "rate_limits": { "rpm": null, "rpd": null },
+      "priority": 25,
+      "docs": "https://www.scaleway.com/en/docs/generative-apis",
+      "source": "cheahjs/free-llm-api-resources",
+      "status": "active"
+    },
+    {
+      "id": "hyperbolic",
+      "name": "Hyperbolic",
+      "wire_format": "openai",
+      "base_url": "https://api.hyperbolic.xyz/v1",
+      "auth": { "scheme": "bearer", "env": ["HYPERBOLIC_API_KEY"] },
+      "models_path": "/models",
+      "default_model": "meta-llama/Meta-Llama-3.1-8B-Instruct",
+      "models": [
+        { "id": "meta-llama/Meta-Llama-3.1-8B-Instruct", "strengths": ["fast-cheap", "general"] }
+      ],
+      "rate_limits": { "rpm": null, "rpd": null, "note": "trial credit" },
+      "priority": 20,
+      "docs": "https://docs.hyperbolic.xyz",
+      "source": "cheahjs/free-llm-api-resources",
+      "status": "active"
+    },
+    {
+      "id": "local-vllm",
+      "name": "Local vLLM (AG23-tools/vllm-service)",
+      "wire_format": "openai",
+      "base_url": "http://localhost:8000/v1",
+      "auth": { "scheme": "none", "env": [] },
+      "models_path": "/models",
+      "default_model": null,
+      "models": [],
+      "rate_limits": { "rpm": null, "rpd": null },
+      "priority": 100,
+      "docs": "https://github.com/Aryagarg23/AG23-tools",
+      "source": "AG23-tools/vllm-service",
+      "status": "active",
+      "local": true
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+# ag23-llm gateway core
+# litellm 1.92.0 was published sdist-only (no wheel) -> pip builds from source, which
+# drags in a Rust toolchain to compile tiktoken/jiter/rpds-py. Pin to a wheeled release.
+# If a build still triggers Rust: pip install -r requirements.txt --only-binary=:all:
+litellm>=1.91,<1.92
+httpx
+python-dotenv      # load a local .env of provider keys
+
+# Optional — task/benchmark routing. Without these the gateway still works and falls back
+# to keyword-based task classification (no embeddings).
+semantic-router
+fastembed
+
+# Optional — `python -m ag23_llm config` (LiteLLM proxy config.yaml dump)
+pyyaml
