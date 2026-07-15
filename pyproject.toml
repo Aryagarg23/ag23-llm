@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ag23-llm"
+version = "0.1.0"
+description = "Task-routed gateway over free LLM providers (LiteLLM + Semantic Router), with a provider scout."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Arya Garg" }]
+keywords = ["llm", "gateway", "litellm", "routing", "free-llm"]
+dependencies = [
+    # litellm 1.92.0 is sdist-only (needs Rust to build); pin to a wheeled release.
+    "litellm>=1.91,<1.92",
+    "httpx",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+# Embedding-based task classification. Without it the gateway falls back to keyword routing.
+routing = ["semantic-router", "fastembed"]
+# `ag23-llm config` (LiteLLM proxy config.yaml dump).
+config = ["pyyaml"]
+
+[project.scripts]
+ag23-llm = "ag23_llm.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/Aryagarg23/ag23-llm"
+Repository = "https://github.com/Aryagarg23/ag23-llm"
+
+# Only the gateway is packaged. The scout (scout/) is a repo-only tool by design — it
+# browses the web and mutates the registry, so it stays out of the importable install.
+[tool.hatch.build.targets.wheel]
+packages = ["ag23_llm"]

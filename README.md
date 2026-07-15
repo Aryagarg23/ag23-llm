@@ -29,20 +29,24 @@ cp .env.example .env      # add a key for any provider you have (Groq is the eas
 
 Every provider key is optional — unconfigured providers are skipped.
 
-### Use it from another project's venv (no pip install)
+### Install it into another project (from GitHub, not PyPI)
 
-It's a repo, not a package, so there's nothing to `pip install`. To make `import ag23_llm`
-work in another venv, link the repo onto that venv's path (writes a `.pth` file):
+Pip-installable straight from the repo — no PyPI. Add to a `requirements.txt`:
 
-```bash
-python link_into_venv.py --venv /path/to/other/venv
-# or run it with that venv's python:
-/path/to/other/venv/Scripts/python link_into_venv.py     # Windows
+```
+ag23-llm @ git+https://github.com/Aryagarg23/ag23-llm.git
 ```
 
-The path is computed from the repo's own location, so re-run it after moving the repo.
-`--uninstall` removes the link. You still need this repo's runtime deps installed in that
-venv (`pip install -r requirements.txt`).
+or install directly:
+
+```bash
+pip install "git+https://github.com/Aryagarg23/ag23-llm.git"
+pip install "ag23-llm[routing] @ git+https://github.com/Aryagarg23/ag23-llm.git"  # + embeddings
+pip install -e .   # editable, from a local clone (live edits)
+```
+
+This installs the **gateway** (`import ag23_llm`, plus an `ag23-llm` CLI). The **scout** is
+not part of the install — it's a repo-only tool (clone the repo and run `python -m scout`).
 
 ## Use the gateway
 
