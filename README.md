@@ -29,6 +29,21 @@ cp .env.example .env      # add a key for any provider you have (Groq is the eas
 
 Every provider key is optional — unconfigured providers are skipped.
 
+### Use it from another project's venv (no pip install)
+
+It's a repo, not a package, so there's nothing to `pip install`. To make `import ag23_llm`
+work in another venv, link the repo onto that venv's path (writes a `.pth` file):
+
+```bash
+python link_into_venv.py --venv /path/to/other/venv
+# or run it with that venv's python:
+/path/to/other/venv/Scripts/python link_into_venv.py     # Windows
+```
+
+The path is computed from the repo's own location, so re-run it after moving the repo.
+`--uninstall` removes the link. You still need this repo's runtime deps installed in that
+venv (`pip install -r requirements.txt`).
+
 ## Use the gateway
 
 ```bash
