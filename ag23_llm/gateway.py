@@ -69,9 +69,12 @@ def _result_from_response(resp, *, requested_provider: Optional[str]) -> ChatRes
     text = getattr(choice.message, "content", None) or ""
     usage = getattr(resp, "usage", None)
     hidden = getattr(resp, "_hidden_params", {}) or {}
-    provider = (hidden.get("custom_llm_provider")
+    # A forced provider is the registry id the caller asked for — keep it. LiteLLM's
+    # custom_llm_provider is the wire format ("openai"), which misattributes stats
+    # for any OpenAI-compatible provider (e.g. local-vllm showed up as "openai").
+    provider = (requested_provider
+                or hidden.get("custom_llm_provider")
                 or (hidden.get("model_info") or {}).get("provider")
-                or requested_provider
                 or "unknown")
     return ChatResult(
         text=text,

@@ -10,6 +10,7 @@ is touched, no logger fires. Enable with `configure(telemetry=True)` or AG23_LLM
 """
 from __future__ import annotations
 
+import contextvars
 import json
 import logging
 import threading
@@ -26,10 +27,27 @@ class _Agg:
     errors: int = 0
     total_latency_ms: float = 0.0
     by_provider: dict = field(default_factory=dict)
+    by_model: dict = field(default_factory=dict)
 
 
 _agg = _Agg()
 _lock = threading.Lock()
+
+# Caller-supplied context stamped onto every event (e.g. an agent loop tagging
+# events with project/goal/iteration so telemetry joins with outcome records).
+_context: contextvars.ContextVar[Optional[dict]] = contextvars.ContextVar(
+    "ag23_llm_telemetry_context", default=None
+)
+
+
+def set_context(**fields) -> None:
+    """Stamp subsequent telemetry events with caller context under event['ctx'].
+
+    e.g. set_context(project="x", goal="fix y", iteration=2). Call with no
+    arguments to clear. Context-local (contextvars), so concurrent callers
+    don't bleed into each other's events.
+    """
+    _context.set(fields or None)
 
 
 def record(*, provider: str, model: str, latency_ms: float, ok: bool,
@@ -52,17 +70,21 @@ def record(*, provider: str, model: str, latency_ms: float, ok: bool,
         "error": error,
         "total_tokens": total_tokens,
     }
+    ctx = _context.get()
+    if ctx:
+        event["ctx"] = ctx
 
     with _lock:
         _agg.calls += 1
         _agg.total_latency_ms += latency_ms
         if not ok:
             _agg.errors += 1
-        p = _agg.by_provider.setdefault(provider, {"calls": 0, "errors": 0, "latency_ms": 0.0})
-        p["calls"] += 1
-        p["latency_ms"] += latency_ms
-        if not ok:
-            p["errors"] += 1
+        for key, bucket in ((provider, _agg.by_provider), (model, _agg.by_model)):
+            d = bucket.setdefault(key, {"calls": 0, "errors": 0, "latency_ms": 0.0})
+            d["calls"] += 1
+            d["latency_ms"] += latency_ms
+            if not ok:
+                d["errors"] += 1
 
     (logger.error if not ok else logger.info)("ag23_llm.call %s", event)
 
@@ -74,24 +96,28 @@ def record(*, provider: str, model: str, latency_ms: float, ok: bool,
             pass
 
 
+def _summarize(bucket: dict) -> dict:
+    return {
+        name: {
+            "calls": v["calls"],
+            "errors": v["errors"],
+            "avg_latency_ms": round(v["latency_ms"] / v["calls"], 1) if v["calls"] else 0.0,
+        }
+        for name, v in bucket.items()
+    }
+
+
 def stats() -> dict:
-    """Aggregate view: totals, error rate, average latency, per-provider breakdown."""
+    """Aggregate view: totals, error rate, average latency, per-provider and per-model breakdowns."""
     with _lock:
         avg = (_agg.total_latency_ms / _agg.calls) if _agg.calls else 0.0
-        by_provider = {
-            name: {
-                "calls": v["calls"],
-                "errors": v["errors"],
-                "avg_latency_ms": round(v["latency_ms"] / v["calls"], 1) if v["calls"] else 0.0,
-            }
-            for name, v in _agg.by_provider.items()
-        }
         return {
             "calls": _agg.calls,
             "errors": _agg.errors,
             "error_rate": round(_agg.errors / _agg.calls, 3) if _agg.calls else 0.0,
             "avg_latency_ms": round(avg, 1),
-            "by_provider": by_provider,
+            "by_provider": _summarize(_agg.by_provider),
+            "by_model": _summarize(_agg.by_model),
         }
 
 
@@ -107,21 +133,20 @@ def aggregate(events: list[dict]) -> dict:
     calls = len(events)
     errors = sum(1 for e in events if not e.get("ok", True))
     total = sum(e.get("latency_ms", 0) or 0 for e in events)
-    by: dict = {}
+    by_provider: dict = {}
+    by_model: dict = {}
     for e in events:
-        d = by.setdefault(e.get("provider", "?"), {"calls": 0, "errors": 0, "latency_ms": 0.0})
-        d["calls"] += 1
-        d["latency_ms"] += e.get("latency_ms", 0) or 0
-        if not e.get("ok", True):
-            d["errors"] += 1
+        for key, bucket in ((e.get("provider", "?"), by_provider), (e.get("model", "?"), by_model)):
+            d = bucket.setdefault(key, {"calls": 0, "errors": 0, "latency_ms": 0.0})
+            d["calls"] += 1
+            d["latency_ms"] += e.get("latency_ms", 0) or 0
+            if not e.get("ok", True):
+                d["errors"] += 1
     return {
         "calls": calls,
         "errors": errors,
         "error_rate": round(errors / calls, 3) if calls else 0.0,
         "avg_latency_ms": round(total / calls, 1) if calls else 0.0,
-        "by_provider": {
-            name: {"calls": v["calls"], "errors": v["errors"],
-                   "avg_latency_ms": round(v["latency_ms"] / v["calls"], 1) if v["calls"] else 0.0}
-            for name, v in by.items()
-        },
+        "by_provider": _summarize(by_provider),
+        "by_model": _summarize(by_model),
     }

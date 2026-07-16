@@ -16,12 +16,13 @@ __version__ = "0.1.0"
 from .config import configure, get_config
 from .gateway import chat, reset_router
 from .telemetry import reset as reset_stats
+from .telemetry import set_context as telemetry_context
 from .telemetry import stats
 from .types import ChatMessage, ChatRequest, ChatResult, LLMError
 
 __all__ = [
     "chat", "reset_router",
     "configure", "get_config",          # optional task-routing + telemetry toggles
-    "stats", "reset_stats",             # opt-in telemetry aggregates
+    "stats", "reset_stats", "telemetry_context",  # opt-in telemetry aggregates + event context
     "ChatMessage", "ChatRequest", "ChatResult", "LLMError",
 ]
