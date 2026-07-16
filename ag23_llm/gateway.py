@@ -23,6 +23,26 @@ from .types import (AllProvidersFailed, ChatMessage, ChatResult, LLMError,
 
 MessagesInput = Union[str, list[ChatMessage], list[dict]]
 
+# Model ids discovered from a local provider's /models endpoint, keyed by provider id.
+# Populated lazily on the first forced call to a local provider with no default_model.
+_discovered_model_cache: dict[str, str] = {}
+
+
+def _discover_local_model(prov: "registry.Provider") -> str:
+    """Resolve a local (e.g. vLLM) provider's served model from its OpenAI-compatible
+    GET {base_url}/models endpoint (data[0].id). Cached by the caller per provider id."""
+    import httpx
+
+    base = prov.resolved_base_url().rstrip("/")
+    resp = httpx.get(f"{base}/models", timeout=10.0)
+    resp.raise_for_status()
+    data = resp.json().get("data") or []
+    if not data or not data[0].get("id"):
+        raise LLMError(
+            f"provider '{prov.id}' returned no models from {base}/models"
+        )
+    return data[0]["id"]
+
 
 def _normalize_messages(messages: MessagesInput) -> list[dict]:
     if isinstance(messages, str):
@@ -124,9 +144,23 @@ def chat(
         if provider and not prov:
             raise LLMError(f"unknown provider '{provider}' (see providers.json)")
         target_model = model or (prov.default_model if prov else None)
+        discovered = False
+        if not target_model and prov and prov.local:
+            # Local provider (e.g. vLLM) that doesn't pin a model: discover the
+            # served model from its /models endpoint, cached per provider id.
+            target_model = _discovered_model_cache.get(prov.id)
+            if not target_model:
+                target_model = _discover_local_model(prov)
+                _discovered_model_cache[prov.id] = target_model
+            discovered = True
         if not target_model:
             raise LLMError(f"provider '{provider}' has no default_model; pass model=")
         params = config_gen.litellm_model_params(prov, target_model, use_env_ref=False)
+        if discovered:
+            # The served id from /models is passed as-is; custom_llm_provider (not a
+            # "openai/" model prefix) tells LiteLLM to route it to the local endpoint.
+            params["model"] = target_model
+            params["custom_llm_provider"] = "openai"
         label = provider or "forced"
 
         def _call():
